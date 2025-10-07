@@ -18,7 +18,7 @@ use crate::ioctls::device::DeviceFd;
 use crate::ioctls::device::new_device;
 use crate::ioctls::vcpu::VcpuFd;
 use crate::ioctls::vcpu::new_vcpu;
-use crate::ioctls::{KvmRunWrapper, Result};
+use crate::ioctls::{KvmDirtyLogRing, KvmRunWrapper, Result};
 use crate::kvm_ioctls::*;
 use vmm_sys_util::errno;
 use vmm_sys_util::eventfd::EventFd;
@@ -59,6 +59,7 @@ impl From<NoDatamatch> for u64 {
 pub struct VmFd {
     vm: File,
     run_size: usize,
+    dirty_ring_bytes: usize,
 }
 
 impl VmFd {
@@ -1214,7 +1215,15 @@ impl VmFd {
 
         let kvm_run_ptr = KvmRunWrapper::mmap_from_fd(&vcpu, self.run_size)?;
 
-        Ok(new_vcpu(vcpu, kvm_run_ptr))
+        let dirty_log_ring = {
+            if self.dirty_ring_bytes > 0 {
+                Some(KvmDirtyLogRing::mmap_from_fd(&vcpu, self.dirty_ring_bytes)?)
+            } else {
+                None
+            }
+        };
+
+        Ok(new_vcpu(vcpu, kvm_run_ptr, dirty_log_ring))
     }
 
     /// Creates a VcpuFd object from a vcpu RawFd.
@@ -1250,7 +1259,14 @@ impl VmFd {
         // SAFETY: we trust the kernel and verified parameters
         let vcpu = unsafe { File::from_raw_fd(fd) };
         let kvm_run_ptr = KvmRunWrapper::mmap_from_fd(&vcpu, self.run_size)?;
-        Ok(new_vcpu(vcpu, kvm_run_ptr))
+        let dirty_log_ring = {
+            if self.dirty_ring_bytes > 0 {
+                Some(KvmDirtyLogRing::mmap_from_fd(&vcpu, self.dirty_ring_bytes)?)
+            } else {
+                None
+            }
+        };
+        Ok(new_vcpu(vcpu, kvm_run_ptr, dirty_log_ring))
     }
 
     /// Creates an emulated device in the kernel.
@@ -1915,6 +1931,108 @@ impl VmFd {
         Ok(())
     }
 
+    /// Enables KVM's dirty log ring for new vCPUs created on this VM. Checks required capabilities and returns
+    /// `true` if the ring needs to be used together with a backup bitmap `KVM_GET_DIRTY_LOG`. Takes optional
+    /// dirty ring size as bytes, if not supplied, will use maximum supported dirty ring size. Enabling the dirty
+    /// log ring is only allowed before any vCPU was created on the VmFd.
+    /// # Arguments
+    ///
+    /// * `bytes` - Size of the dirty log ring in bytes. Needs to be multiple of `std::mem::size_of::<kvm_dirty_gfn>()`
+    /// and power of two.
+    #[cfg(target_arch = "x86_64")]
+    pub fn enable_dirty_log_ring(&self, bytes: Option<i32>) -> Result<bool> {
+        // Check if requested size is larger than 0
+        if let Some(sz) = bytes {
+            if sz <= 0
+                || !(sz as u32).is_power_of_two()
+                || (sz as usize % std::mem::size_of::<kvm_dirty_gfn>() == 0)
+            {
+                return Err(errno::Error::new(libc::EINVAL));
+            }
+        }
+
+        let (dirty_ring_cap, max_bytes, bitmap) = {
+            // Check if KVM_CAP_DIRTY_LOG_RING_ACQ_REL is available, enable if possible
+            let acq_rel_sz = self.check_extension_raw(KVM_CAP_DIRTY_LOG_RING_ACQ_REL.into());
+            if acq_rel_sz > 0 {
+                if self.check_extension_raw(KVM_CAP_DIRTY_LOG_RING_WITH_BITMAP.into()) != 0 {
+                    (KVM_CAP_DIRTY_LOG_RING_ACQ_REL, acq_rel_sz, true)
+                } else {
+                    (KVM_CAP_DIRTY_LOG_RING_ACQ_REL, acq_rel_sz, false)
+                }
+            } else {
+                let sz = self.check_extension_raw(KVM_CAP_DIRTY_LOG_RING.into());
+                if sz > 0 {
+                    (KVM_CAP_DIRTY_LOG_RING, sz, false)
+                } else {
+                    (0, 0, false)
+                }
+            }
+        };
+
+        if dirty_ring_cap == 0 {
+            // Neither KVM_CAP_DIRTY_LOG_RING nor KVM_CAP_DIRTY_LOG_RING_ACQ_REL are available
+            return Err(errno::Error::new(libc::EOPNOTSUPP));
+        }
+
+        let cap_ring_size = bytes.unwrap_or(max_bytes);
+
+        // Check if supplied size is larger than what the kernel supports
+        if cap_ring_size > max_bytes {
+            return Err(errno::Error::new(libc::EINVAL));
+        }
+
+        // Enable dirty rings with _ACQ_REL if supported, or without otherwise
+        let ar_ring_cap = kvm_enable_cap {
+            cap: dirty_ring_cap,
+            args: [cap_ring_size as u64, 0, 0, 0],
+            ..Default::default()
+        };
+
+        // Enable the ring cap first
+        self.enable_cap(&ar_ring_cap)?;
+
+        if bitmap {
+            let with_bitmap_cap = kvm_enable_cap {
+                cap: KVM_CAP_DIRTY_LOG_RING_WITH_BITMAP,
+                ..Default::default()
+            };
+
+            // Enable backup bitmap
+            self.enable_cap(&with_bitmap_cap)?;
+        }
+
+        Ok(bitmap)
+    }
+
+    /// Resets all vCPU's dirty log rings. This notifies the kernel that pages have been harvested
+    /// from the dirty ring and the corresponding pages can be reprotected.
+    ///
+    /// # Example
+    ///
+    ///  ```rust
+    /// # extern crate kvm_ioctls;
+    /// # use kvm_ioctls::{Cap, Kvm};
+    /// let kvm = Kvm::new().unwrap();
+    /// let vm = kvm.create_vm().unwrap();
+    /// vm.enable_dirty_log_ring(None).unwrap();
+    /// if kvm.check_extension(Cap::DirtyLogRing) {
+    ///     vm.reset_dirty_rings().unwrap();
+    /// }
+    /// ```
+    ///
+    #[cfg(target_arch = "x86_64")]
+    pub fn reset_dirty_rings(&self) -> Result<c_int> {
+        // SAFETY: Safe because we know that our file is a KVM fd and that the request is one of
+        // the ones defined by kernel.
+        let ret = unsafe { ioctl(self, KVM_RESET_DIRTY_RINGS()) };
+        if ret < 0 {
+            Err(errno::Error::last())
+        } else {
+            Ok(ret)
+        }
+    }
+
     /// Sets a specified piece of vm configuration and/or state.
     ///
     /// See the documentation for `KVM_SET_DEVICE_ATTR` in
@@ -2011,7 +2129,11 @@ impl VmFd {
 /// `create_vm` from `Kvm`. The function cannot be part of the `VmFd` implementation because
 /// then it would be exported with the public `VmFd` interface.
 pub fn new_vmfd(vm: File, run_size: usize) -> VmFd {
-    VmFd { vm, run_size }
+    VmFd {
+        vm,
+        run_size,
+        dirty_ring_bytes: 0,
+    }
 }
 
 impl AsRawFd for VmFd {
@@ -2601,6 +2723,7 @@ mod tests {
         let faulty_vm_fd = VmFd {
             vm: unsafe { File::from_raw_fd(-2) },
             run_size: 0,
+            dirty_ring_bytes: 0,
         };
 
         let invalid_mem_region = kvm_userspace_memory_region {

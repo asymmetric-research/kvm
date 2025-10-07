@@ -6,7 +6,14 @@
 
 - Added `KvmDirtyLogRing` structure to mmap the dirty log ring.
 - Added `KVM_DIRTY_GFN_F_DIRTY` and `KVM_DIRTY_GFN_F_RESET` bitflags.
-
+- Added `KvmDirtyLogRing` iterator type for accessing dirty log entries.
+- Added `dirty_log_ring` field to `VcpuFd` to access per-vCpu dirty rings.
+- Added `dirty_log_bytes` field to `VmFd` to automatically map correct size dirty
+  rings for vCpus as they are created.
+- Added `enable_dirty_log_ring` function on `VmFd` to check corresponding 
+  capabilities and enable KVM's dirty log ring.
+- Added `VcpuFd::dirty_log_ring_iter()` to iterate over dirty guest frame numbers.
+- Added `VmFd::reset_dirty_rings()` to reset all dirty rings for the VM.
 
 - Plumb through KVM_CAP_DIRTY_LOG_RING as DirtyLogRing cap.
 

@@ -16,7 +16,7 @@ use libc::EINVAL;
 use std::fs::File;
 use std::os::unix::io::{AsRawFd, RawFd};
 
-use crate::ioctls::{KvmCoalescedIoRing, KvmRunWrapper, Result};
+use crate::ioctls::{KvmCoalescedIoRing, KvmDirtyLogRing, KvmRunWrapper, Result};
 use crate::kvm_ioctls::*;
 use vmm_sys_util::errno;
 use vmm_sys_util::ioctl::{ioctl, ioctl_with_mut_ref, ioctl_with_ref};
@@ -197,6 +197,9 @@ pub struct VcpuFd {
     kvm_run_ptr: KvmRunWrapper,
     /// A pointer to the coalesced MMIO page
     coalesced_mmio_ring: Option<KvmCoalescedIoRing>,
+    /// A pointer to the dirty log ring
+    #[allow(unused)]
+    dirty_log_ring: Option<KvmDirtyLogRing>,
 }
 
 /// KVM Sync Registers used to tell KVM which registers to sync
@@ -2104,6 +2107,37 @@ impl VcpuFd {
         }
     }
 
+    /// Gets the dirty log ring iterator if one is mapped.
+    ///
+    /// Returns an iterator over dirty guest frame numbers as (slot, offset) tuples.
+    /// Returns `None` if no dirty log ring has been mapped via [`map_dirty_log_ring`](VcpuFd::map_dirty_log_ring).
+    ///
+    /// # Returns
+    ///
+    /// An optional iterator over the dirty log ring entries.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// # use kvm_ioctls::Kvm;
+    /// # use kvm_ioctls::Cap;
+    /// let kvm = Kvm::new().unwrap();
+    /// let vm = kvm.create_vm().unwrap();
+    /// vm.enable_dirty_log_ring(None).unwrap();
+    /// let mut vcpu = vm.create_vcpu(0).unwrap();
+    /// if kvm.check_extension(Cap::DirtyLogRing) {
+    ///     if let Some(mut iter) = vcpu.dirty_log_ring_iter() {
+    ///         for (slot, offset) in iter {
+    ///             println!("Dirty page in slot {} at offset {}", slot, offset);
+    ///         }
+    ///     }
+    /// }
+    /// ```
+    #[cfg(target_arch = "x86_64")]
+    pub fn dirty_log_ring_iter(&mut self) -> Option<impl Iterator<Item = (u32, u64)>> {
+        self.dirty_log_ring.as_mut()
+    }
+
     /// Maps the coalesced MMIO ring page. This allows reading entries from
     /// the ring via [`coalesced_mmio_read()`](VcpuFd::coalesced_mmio_read).
     ///
@@ -2159,11 +2193,16 @@ impl VcpuFd {
 /// This should not be exported as a public function because the preferred way is to use
 /// `create_vcpu` from `VmFd`. The function cannot be part of the `VcpuFd` implementation because
 /// then it would be exported with the public `VcpuFd` interface.
-pub fn new_vcpu(vcpu: File, kvm_run_ptr: KvmRunWrapper) -> VcpuFd {
+pub fn new_vcpu(
+    vcpu: File,
+    kvm_run_ptr: KvmRunWrapper,
+    dirty_log_ring: Option<KvmDirtyLogRing>,
+) -> VcpuFd {
     VcpuFd {
         vcpu,
         kvm_run_ptr,
         coalesced_mmio_ring: None,
+        dirty_log_ring: dirty_log_ring,
     }
 }
 
