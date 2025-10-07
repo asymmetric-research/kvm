@@ -2,6 +2,12 @@
 
 ## Upcoming Release
 
+### Added
+
+- Added `KvmDirtyLogRing` structure to mmap the dirty log ring.
+- Added `KVM_DIRTY_GFN_F_DIRTY` and `KVM_DIRTY_GFN_F_RESET` bitflags.
+
+
 - Plumb through KVM_CAP_DIRTY_LOG_RING as DirtyLogRing cap.
 
 ## v0.24.0
