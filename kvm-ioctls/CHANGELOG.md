@@ -2,6 +2,10 @@
 
 ## Upcoming Release
 
+### Fixed
+
+- Fixed `VmFd::enable_cap` available for all architectures
+
 ### Added
 
 - Added `KvmDirtyLogRing` structure to mmap the dirty log ring.
