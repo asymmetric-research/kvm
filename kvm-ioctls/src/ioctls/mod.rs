@@ -8,6 +8,7 @@
 use std::mem::size_of;
 use std::os::unix::io::AsRawFd;
 use std::ptr::{NonNull, null_mut};
+use std::sync::atomic::{Ordering, fence};
 
 use kvm_bindings::{
     KVM_COALESCED_MMIO_PAGE_OFFSET, KVM_DIRTY_GFN_F_DIRTY, KVM_DIRTY_GFN_F_RESET,
@@ -39,6 +40,8 @@ pub(crate) struct KvmDirtyLogRing {
     gfns: NonNull<kvm_dirty_gfn>,
     /// Ring size mask (size-1) for efficient modulo operations
     mask: u64,
+    /// `true` if we need to use Acquire/Release memory ordering
+    use_acq_rel: bool,
 }
 
 // SAFETY: TBD
@@ -50,7 +53,11 @@ impl KvmDirtyLogRing {
     /// # Arguments
     /// * `fd` - vCPU file descriptor to mmap from.
     /// * `size` - Size of memory region in bytes.
-    pub(crate) fn mmap_from_fd<F: AsRawFd>(fd: &F, bytes: usize) -> Result<Self> {
+    pub(crate) fn mmap_from_fd<F: AsRawFd>(
+        fd: &F,
+        bytes: usize,
+        use_acq_rel: bool,
+    ) -> Result<Self> {
         // SAFETY: We trust the sysconf libc function and we're calling it
         // with a correct parameter.
         let page_size = match unsafe { libc::sysconf(libc::_SC_PAGESIZE) } {
@@ -90,6 +97,7 @@ impl KvmDirtyLogRing {
             next_dirty: 0,
             gfns,
             mask: (slots - 1) as u64,
+            use_acq_rel,
         });
     }
 }
@@ -111,19 +119,32 @@ impl Iterator for KvmDirtyLogRing {
     type Item = (u32, u64);
     fn next(&mut self) -> Option<Self::Item> {
         let i = self.next_dirty & self.mask;
-        unsafe {
-            let gfn_ptr = self.gfns.add(i as usize).as_ptr();
-            let gfn = gfn_ptr.read_volatile();
-            if gfn.flags & KVM_DIRTY_GFN_F_DIRTY == 0 {
-                // next_dirty stays the same, it will become the next dirty element
-                return None;
-            } else {
-                self.next_dirty += 1;
-                let mut updated_gfn = gfn;
-                updated_gfn.flags ^= KVM_DIRTY_GFN_F_RESET;
+        // SAFETY: i is not larger than mask, thus is a valid offset into self.gfns,
+        // therefore this operation produces a valid pointer to a kvm_dirty_gfn
+        let gfn_ptr = unsafe { self.gfns.add(i as usize).as_ptr() };
+
+        if self.use_acq_rel {
+            fence(Ordering::Acquire);
+        }
+
+        // SAFETY: Can read a valid pointer to a kvm_dirty_gfn
+        let gfn = unsafe { gfn_ptr.read_volatile() };
+
+        if gfn.flags & KVM_DIRTY_GFN_F_DIRTY == 0 {
+            // next_dirty stays the same, it will become the next dirty element
+            return None;
+        } else {
+            self.next_dirty += 1;
+            let mut updated_gfn = gfn;
+            updated_gfn.flags ^= KVM_DIRTY_GFN_F_RESET;
+            // SAFETY: Can write to a valid pointer to a kvm_dirty_gfn
+            unsafe {
                 gfn_ptr.write_volatile(updated_gfn);
-                return Some((gfn.slot, gfn.offset));
+            };
+            if self.use_acq_rel {
+                fence(Ordering::Release);
             }
+            return Some((gfn.slot, gfn.offset));
         }
     }
 }

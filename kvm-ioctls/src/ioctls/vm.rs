@@ -54,12 +54,21 @@ impl From<NoDatamatch> for u64 {
     }
 }
 
+/// Information about dirty log ring configuration.
+#[derive(Debug)]
+struct DirtyLogRingInfo {
+    /// Size of dirty ring in bytes.
+    bytes: usize,
+    /// Whether to use acquire/release semantics.
+    acq_rel: bool,
+}
+
 /// Wrapper over KVM VM ioctls.
 #[derive(Debug)]
 pub struct VmFd {
     vm: File,
     run_size: usize,
-    dirty_ring_bytes: usize,
+    dirty_log_ring_info: Option<DirtyLogRingInfo>,
 }
 
 impl VmFd {
@@ -1215,12 +1224,14 @@ impl VmFd {
 
         let kvm_run_ptr = KvmRunWrapper::mmap_from_fd(&vcpu, self.run_size)?;
 
-        let dirty_log_ring = {
-            if self.dirty_ring_bytes > 0 {
-                Some(KvmDirtyLogRing::mmap_from_fd(&vcpu, self.dirty_ring_bytes)?)
-            } else {
-                None
-            }
+        let dirty_log_ring = if let Some(info) = &self.dirty_log_ring_info {
+            Some(KvmDirtyLogRing::mmap_from_fd(
+                &vcpu,
+                info.bytes,
+                info.acq_rel,
+            )?)
+        } else {
+            None
         };
 
         Ok(new_vcpu(vcpu, kvm_run_ptr, dirty_log_ring))
@@ -1259,12 +1270,14 @@ impl VmFd {
         // SAFETY: we trust the kernel and verified parameters
         let vcpu = unsafe { File::from_raw_fd(fd) };
         let kvm_run_ptr = KvmRunWrapper::mmap_from_fd(&vcpu, self.run_size)?;
-        let dirty_log_ring = {
-            if self.dirty_ring_bytes > 0 {
-                Some(KvmDirtyLogRing::mmap_from_fd(&vcpu, self.dirty_ring_bytes)?)
-            } else {
-                None
-            }
+        let dirty_log_ring = if let Some(info) = &self.dirty_log_ring_info {
+            Some(KvmDirtyLogRing::mmap_from_fd(
+                &vcpu,
+                info.bytes,
+                info.acq_rel,
+            )?)
+        } else {
+            None
         };
         Ok(new_vcpu(vcpu, kvm_run_ptr, dirty_log_ring))
     }
@@ -1931,15 +1944,15 @@ impl VmFd {
     }
 
     /// Enables KVM's dirty log ring for new vCPUs created on this VM. Checks required capabilities and returns
-    /// `true` if the ring needs to be used together with a backup bitmap `KVM_GET_DIRTY_LOG`. Takes optional
-    /// dirty ring size as bytes, if not supplied, will use maximum supported dirty ring size. Enabling the dirty
-    /// log ring is only allowed before any vCPU was created on the VmFd.
+    /// a boolean `use_bitmap` as a result. `use_bitmap` is `true` if the ring needs to be used
+    /// together with a backup bitmap `KVM_GET_DIRTY_LOG`. Takes optional dirty ring size as bytes, if not supplied, will
+    /// use maximum supported dirty ring size. Enabling the dirty log ring is only allowed before any vCPU was
+    /// created on the VmFd.
     /// # Arguments
     ///
     /// * `bytes` - Size of the dirty log ring in bytes. Needs to be multiple of `std::mem::size_of::<kvm_dirty_gfn>()`
     /// and power of two.
-    #[cfg(target_arch = "x86_64")]
-    pub fn enable_dirty_log_ring(&self, bytes: Option<i32>) -> Result<bool> {
+    pub fn enable_dirty_log_ring(&mut self, bytes: Option<i32>) -> Result<bool> {
         // Check if requested size is larger than 0
         if let Some(sz) = bytes {
             if sz <= 0
@@ -1950,7 +1963,7 @@ impl VmFd {
             }
         }
 
-        let (dirty_ring_cap, max_bytes, bitmap) = {
+        let (dirty_ring_cap, max_bytes, use_bitmap) = {
             // Check if KVM_CAP_DIRTY_LOG_RING_ACQ_REL is available, enable if possible
             let acq_rel_sz = self.check_extension_raw(KVM_CAP_DIRTY_LOG_RING_ACQ_REL.into());
             if acq_rel_sz > 0 {
@@ -1987,11 +2000,12 @@ impl VmFd {
             args: [cap_ring_size as u64, 0, 0, 0],
             ..Default::default()
         };
+        let use_acq_rel = dirty_ring_cap == KVM_CAP_DIRTY_LOG_RING_ACQ_REL;
 
         // Enable the ring cap first
         self.enable_cap(&ar_ring_cap)?;
 
-        if bitmap {
+        if use_bitmap {
             let with_bitmap_cap = kvm_enable_cap {
                 cap: KVM_CAP_DIRTY_LOG_RING_WITH_BITMAP,
                 ..Default::default()
@@ -2001,7 +2015,12 @@ impl VmFd {
             self.enable_cap(&with_bitmap_cap)?;
         }
 
-        Ok(bitmap)
+        self.dirty_log_ring_info = Some(DirtyLogRingInfo {
+            bytes: cap_ring_size as usize,
+            acq_rel: use_acq_rel,
+        });
+
+        Ok(use_bitmap)
     }
 
     /// Resets all vCPU's dirty log rings. This notifies the kernel that pages have been harvested
@@ -2013,7 +2032,7 @@ impl VmFd {
     /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Cap, Kvm};
     /// let kvm = Kvm::new().unwrap();
-    /// let vm = kvm.create_vm().unwrap();
+    /// let mut vm = kvm.create_vm().unwrap();
     /// vm.enable_dirty_log_ring(None).unwrap();
     /// if kvm.check_extension(Cap::DirtyLogRing) {
     ///     vm.reset_dirty_rings().unwrap();
@@ -2131,7 +2150,7 @@ pub fn new_vmfd(vm: File, run_size: usize) -> VmFd {
     VmFd {
         vm,
         run_size,
-        dirty_ring_bytes: 0,
+        dirty_log_ring_info: None,
     }
 }
 
@@ -2722,7 +2741,7 @@ mod tests {
         let faulty_vm_fd = VmFd {
             vm: unsafe { File::from_raw_fd(-2) },
             run_size: 0,
-            dirty_ring_bytes: 0,
+            dirty_log_ring_info: None,
         };
 
         let invalid_mem_region = kvm_userspace_memory_region {

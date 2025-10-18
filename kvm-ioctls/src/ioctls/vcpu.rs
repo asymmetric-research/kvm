@@ -2110,7 +2110,7 @@ impl VcpuFd {
     /// Gets the dirty log ring iterator if one is mapped.
     ///
     /// Returns an iterator over dirty guest frame numbers as (slot, offset) tuples.
-    /// Returns `None` if no dirty log ring has been mapped via [`map_dirty_log_ring`](VcpuFd::map_dirty_log_ring).
+    /// Returns `None` if no dirty log ring has been mapped.
     ///
     /// # Returns
     ///
@@ -2122,7 +2122,7 @@ impl VcpuFd {
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_ioctls::Cap;
     /// let kvm = Kvm::new().unwrap();
-    /// let vm = kvm.create_vm().unwrap();
+    /// let mut vm = kvm.create_vm().unwrap();
     /// vm.enable_dirty_log_ring(None).unwrap();
     /// let mut vcpu = vm.create_vcpu(0).unwrap();
     /// if kvm.check_extension(Cap::DirtyLogRing) {
