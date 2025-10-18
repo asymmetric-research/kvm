@@ -1415,6 +1415,7 @@ impl VmFd {
     /// // Because an IOAPIC supports 24 pins, that's the reason why this test
     /// // picked this number as reference.
     /// cap.args[0] = 24;
+    /// #[cfg(target_arch = "x86_64")]
     /// vm.enable_cap(&cap).unwrap();
     /// ```
     pub fn enable_cap(&self, cap: &kvm_enable_cap) -> Result<()> {
