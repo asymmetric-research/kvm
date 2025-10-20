@@ -44,9 +44,12 @@ pub(crate) struct KvmDirtyLogRing {
     use_acq_rel: bool,
 }
 
-// SAFETY: TBD
-unsafe impl Send for KvmDirtyLogRing {}
-unsafe impl Sync for KvmDirtyLogRing {}
+// // SAFETY: For each vcpu we only allow creating a single instance of the KvmDirtyLogRing,
+// // therefore ownership can safely be transferred between threads (`Send`).
+// unsafe impl Send for KvmDirtyLogRing {}
+
+// // SAFETY: TBD
+// unsafe impl Sync for KvmDirtyLogRing {}
 impl KvmDirtyLogRing {
     /// Maps the KVM dirty log ring from the vCPU file descriptor.
     ///
@@ -132,7 +135,7 @@ impl Iterator for KvmDirtyLogRing {
 
         if gfn.flags & KVM_DIRTY_GFN_F_DIRTY == 0 {
             // next_dirty stays the same, it will become the next dirty element
-            return None;
+            None
         } else {
             self.next_dirty += 1;
             let mut updated_gfn = gfn;
@@ -144,7 +147,7 @@ impl Iterator for KvmDirtyLogRing {
             if self.use_acq_rel {
                 fence(Ordering::Release);
             }
-            return Some((gfn.slot, gfn.offset));
+            Some((gfn.slot, gfn.offset))
         }
     }
 }
