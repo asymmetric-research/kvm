@@ -1947,18 +1947,34 @@ impl VmFd {
     /// Enables KVM's dirty log ring for new vCPUs created on this VM. Checks required capabilities and returns
     /// a boolean `use_bitmap` as a result. `use_bitmap` is `true` if the ring needs to be used
     /// together with a backup bitmap `KVM_GET_DIRTY_LOG`. Takes optional dirty ring size as bytes, if not supplied, will
-    /// use maximum supported dirty ring size. Enabling the dirty log ring is only allowed before any vCPU was
-    /// created on the VmFd.
+    /// use maximum supported dirty ring size. The size needs to be multiple of `std::mem::size_of::<kvm_dirty_gfn>()`
+    /// and power of two. Enabling the dirty log ring is only allowed before any vCPU was created on the VmFd.
+    ///
     /// # Arguments
     ///
-    /// * `bytes` - Size of the dirty log ring in bytes. Needs to be multiple of `std::mem::size_of::<kvm_dirty_gfn>()`
-    /// and power of two.
+    /// * `bytes` - Size of the dirty log ring in bytes.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # extern crate kvm_bindings;
+    /// # extern crate kvm_ioctls;
+    /// # use kvm_ioctls::Kvm;
+    /// # use kvm_bindings::{ KVM_CAP_DIRTY_LOG_RING, };
+    ///
+    /// let kvm = Kvm::new().unwrap();
+    /// let mut vm = kvm.create_vm().unwrap();
+    /// let max_supported_size = vm.check_extension_raw(KVM_CAP_DIRTY_LOG_RING.into());
+    /// vm.enable_dirty_log_ring(Some(max_supported_size));
+    /// // Create one vCPU with the ID=0 to cause a dirty log ring to be mapped.
+    /// let vcpu = vm.create_vcpu(0);
+    /// ```
     pub fn enable_dirty_log_ring(&mut self, bytes: Option<i32>) -> Result<bool> {
         // Check if requested size is larger than 0
         if let Some(sz) = bytes {
             if sz <= 0
                 || !(sz as u32).is_power_of_two()
-                || (sz as usize % std::mem::size_of::<kvm_dirty_gfn>() == 0)
+                || (sz as usize % std::mem::size_of::<kvm_dirty_gfn>() != 0)
             {
                 return Err(errno::Error::new(libc::EINVAL));
             }
@@ -2034,13 +2050,14 @@ impl VmFd {
     /// # use kvm_ioctls::{Cap, Kvm};
     /// let kvm = Kvm::new().unwrap();
     /// let mut vm = kvm.create_vm().unwrap();
-    /// vm.enable_dirty_log_ring(None).unwrap();
     /// if kvm.check_extension(Cap::DirtyLogRing) {
+    ///     vm.enable_dirty_log_ring(None).unwrap();
+    ///     // Create one vCPU with the ID=0 to cause a dirty log ring to be mapped.
+    ///     let vcpu = vm.create_vcpu(0);
     ///     vm.reset_dirty_rings().unwrap();
     /// }
     /// ```
     ///
-    #[cfg(target_arch = "x86_64")]
     pub fn reset_dirty_rings(&self) -> Result<c_int> {
         // SAFETY: Safe because we know that our file is a KVM fd and that the request is one of
         // the ones defined by kernel.
@@ -3048,5 +3065,74 @@ mod tests {
 
         vm.has_device_attr(&dist_attr).unwrap();
         vm.set_device_attr(&dist_attr).unwrap();
+    }
+
+    #[test]
+    fn test_enable_dirty_log_rings() {
+        let kvm = Kvm::new().unwrap();
+        let mut vm = kvm.create_vm().unwrap();
+        if kvm.check_extension(Cap::DirtyLogRing) {
+            vm.enable_dirty_log_ring(None).unwrap();
+            // Create two vCPUs to cause two dirty log rings to be mapped.
+            let _vcpu0 = vm.create_vcpu(0).unwrap();
+            let _vcpu1 = vm.create_vcpu(1).unwrap();
+            vm.reset_dirty_rings().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_enable_dirty_log_rings_sized() {
+        let kvm = Kvm::new().unwrap();
+        let mut vm = kvm.create_vm().unwrap();
+        if kvm.check_extension(Cap::DirtyLogRing) {
+            let max_supported_size = vm.check_extension_raw(KVM_CAP_DIRTY_LOG_RING.into());
+            let size = std::cmp::max(max_supported_size / 2, size_of::<kvm_dirty_gfn>() as i32);
+            vm.enable_dirty_log_ring(Some(size)).unwrap();
+            // Create two vCPUs to cause two dirty log rings to be mapped.
+            let _vcpu0 = vm.create_vcpu(0).unwrap();
+            let _vcpu1 = vm.create_vcpu(1).unwrap();
+            vm.reset_dirty_rings().unwrap();
+        }
+    }
+
+    #[test]
+    #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+    fn test_enable_dirty_log_rings_acq_rel() {
+        let kvm = Kvm::new().unwrap();
+        let mut vm = kvm.create_vm().unwrap();
+        if kvm.check_extension(Cap::DirtyLogRing) {
+            vm.enable_dirty_log_ring(None).unwrap();
+
+            // Manually enable Acq/Rel
+            vm.dirty_log_ring_info = vm
+                .dirty_log_ring_info
+                .map(|i| DirtyLogRingInfo { acq_rel: true, ..i });
+
+            // Create two vCPUs to cause two dirty log rings to be mapped.
+            let _vcpu0 = vm.create_vcpu(0).unwrap();
+            let _vcpu1 = vm.create_vcpu(1).unwrap();
+
+            // Reset dirty rings
+            vm.reset_dirty_rings().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_illegal_dirty_ring() {
+        let kvm = Kvm::new().unwrap();
+        let mut vm = kvm.create_vm().unwrap();
+        if kvm.check_extension(Cap::DirtyLogRing) {
+            // Create one vCPU without dirty log ring
+            let _vcpu0 = vm.create_vcpu(0).unwrap();
+
+            // Not allowed after vCPU has been created
+            vm.enable_dirty_log_ring(None).unwrap_err();
+
+            // Create another vCPU
+            let _vcpu1 = vm.create_vcpu(1).unwrap();
+
+            // Dirty ring should not be enabled
+            vm.reset_dirty_rings().unwrap_err();
+        }
     }
 }

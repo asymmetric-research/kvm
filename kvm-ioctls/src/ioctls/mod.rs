@@ -44,12 +44,6 @@ pub(crate) struct KvmDirtyLogRing {
     use_acq_rel: bool,
 }
 
-// // SAFETY: For each vcpu we only allow creating a single instance of the KvmDirtyLogRing,
-// // therefore ownership can safely be transferred between threads (`Send`).
-// unsafe impl Send for KvmDirtyLogRing {}
-
-// // SAFETY: TBD
-// unsafe impl Sync for KvmDirtyLogRing {}
 impl KvmDirtyLogRing {
     /// Maps the KVM dirty log ring from the vCPU file descriptor.
     ///
@@ -94,14 +88,14 @@ impl KvmDirtyLogRing {
                 offset as i64,
             ) as *mut kvm_dirty_gfn)
             .filter(|addr| addr.as_ptr() != libc::MAP_FAILED as *mut kvm_dirty_gfn)
-            .ok_or_else(|| errno::Error::last())?
+            .ok_or_else(errno::Error::last)?
         };
-        return Ok(Self {
+        Ok(Self {
             next_dirty: 0,
             gfns,
             mask: (slots - 1) as u64,
             use_acq_rel,
-        });
+        })
     }
 }
 
