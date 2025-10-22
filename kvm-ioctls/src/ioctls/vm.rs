@@ -22,7 +22,6 @@ use crate::ioctls::{KvmDirtyLogRing, KvmRunWrapper, Result};
 use crate::kvm_ioctls::*;
 use vmm_sys_util::errno;
 use vmm_sys_util::eventfd::EventFd;
-#[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 use vmm_sys_util::ioctl::ioctl;
 #[cfg(target_arch = "x86_64")]
 use vmm_sys_util::ioctl::ioctl_with_mut_ptr;
