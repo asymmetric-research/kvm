@@ -227,7 +227,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -257,8 +256,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::{
     ///    KVM_ARM_VCPU_PMU_V3_CTRL, KVM_ARM_VCPU_PMU_V3_INIT
@@ -299,8 +296,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::{
     ///    KVM_ARM_VCPU_PMU_V3_CTRL, KVM_ARM_VCPU_PMU_V3_INIT
@@ -338,7 +333,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -370,7 +364,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -399,7 +392,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -431,7 +423,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -459,8 +450,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::kvm_fpu;
     /// let kvm = Kvm::new().unwrap();
@@ -495,8 +484,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_bindings::KVM_MAX_CPUID_ENTRIES;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
@@ -540,8 +527,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_bindings::KVM_MAX_CPUID_ENTRIES;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
@@ -579,8 +564,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_bindings::{kvm_enable_cap, KVM_MAX_CPUID_ENTRIES, KVM_CAP_HYPERV_SYNIC, KVM_CAP_SPLIT_IRQCHIP};
     /// # use kvm_ioctls::{Kvm, Cap};
     /// let kvm = Kvm::new().unwrap();
@@ -620,7 +603,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -653,7 +635,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// use std::io::Write;
     ///
@@ -698,8 +679,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::{kvm_msr_entry, Msrs};
     /// let kvm = Kvm::new().unwrap();
@@ -742,8 +721,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::{kvm_msr_entry, Msrs};
     /// let kvm = Kvm::new().unwrap();
@@ -782,7 +759,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -817,7 +793,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -853,7 +828,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -899,8 +873,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # extern crate vmm_sys_util;
     /// # use kvm_ioctls::{Kvm, Cap};
     /// # use kvm_bindings::{Xsave, kvm_xsave, kvm_xsave2};
@@ -963,7 +935,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1007,8 +978,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # extern crate vmm_sys_util;
     /// # use kvm_ioctls::{Kvm, Cap};
     /// # use kvm_bindings::{Xsave, kvm_xsave, kvm_xsave2};
@@ -1043,7 +1012,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1073,7 +1041,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1104,7 +1071,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1134,7 +1100,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1166,7 +1131,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// if kvm.check_extension(Cap::VcpuEvents) {
@@ -1198,7 +1162,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// if kvm.check_extension(Cap::VcpuEvents) {
@@ -1233,8 +1196,6 @@ impl VcpuFd {
     ///
     /// # Example
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// use kvm_bindings::kvm_vcpu_init;
     /// let kvm = Kvm::new().unwrap();
@@ -1282,8 +1243,6 @@ impl VcpuFd {
     ///
     /// # Example
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// use std::arch::is_aarch64_feature_detected;
     ///
@@ -1324,8 +1283,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::RegList;
     /// let kvm = Kvm::new().unwrap();
@@ -1368,8 +1325,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use kvm_ioctls::Kvm;
     /// # use kvm_bindings::{
     /// #     KVM_GUESTDBG_ENABLE, KVM_GUESTDBG_USE_SW_BP, kvm_guest_debug_arch, kvm_guest_debug
@@ -1494,8 +1449,6 @@ impl VcpuFd {
     /// [https://lwn.net/Articles/658511/](https://lwn.net/Articles/658511/).
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
-    /// # extern crate kvm_bindings;
     /// # use std::io::Write;
     /// # use std::ptr::null_mut;
     /// # use std::slice;
@@ -1737,7 +1690,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1767,7 +1719,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Cap, Kvm};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1802,7 +1753,6 @@ impl VcpuFd {
     /// # Example
     ///
     /// ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::Kvm;
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1835,7 +1785,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, SyncReg, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1859,7 +1808,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, SyncReg, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1881,7 +1829,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, SyncReg, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1903,7 +1850,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, SyncReg, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1921,7 +1867,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, SyncReg, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -1947,7 +1892,6 @@ impl VcpuFd {
     /// # Example
     ///
     ///  ```rust
-    /// # extern crate kvm_ioctls;
     /// # use kvm_ioctls::{Kvm, SyncReg, Cap};
     /// let kvm = Kvm::new().unwrap();
     /// let vm = kvm.create_vm().unwrap();
@@ -2019,8 +1963,6 @@ impl VcpuFd {
     ///     // Next, serialize the actual state into a file or so.
     /// }
     /// ```
-    ///
-    /// [`Kvm::check_extension_int`]: kvm_ioctls::Kvm::check_extension_int
     #[cfg(target_arch = "x86_64")]
     pub fn nested_state(
         &self,
@@ -2033,7 +1975,8 @@ impl VcpuFd {
         match ret {
             0 => {
                 let size = buffer.size as usize;
-                if size == size_of::<kvm_nested_state /* just the empty header */>() {
+                let just_hdr_size = size_of::<kvm_nested_state>();
+                if size <= just_hdr_size {
                     Ok(None)
                 } else {
                     Ok(Some(NonZeroUsize::new(size).unwrap()))
@@ -2214,7 +2157,6 @@ impl AsRawFd for VcpuFd {
 #[cfg(test)]
 mod tests {
     #![allow(clippy::undocumented_unsafe_blocks)]
-    extern crate byteorder;
 
     use super::*;
     #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
@@ -2386,7 +2328,7 @@ mod tests {
     fn lapic_test() {
         use std::io::Cursor;
         // We might get read of byteorder if we replace mem::transmute with something safer.
-        use self::byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
+        use byteorder::{LittleEndian, ReadBytesExt, WriteBytesExt};
         // As per https://github.com/torvalds/linux/arch/x86/kvm/lapic.c
         // Try to write and read the APIC_ICR (0x300) register which is non-read only and
         // one can simply write to it.

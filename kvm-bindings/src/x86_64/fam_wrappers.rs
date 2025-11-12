@@ -1,9 +1,9 @@
 // Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-use vmm_sys_util::fam::{FamStruct, FamStructWrapper};
-
 use super::bindings::*;
+use vmm_sys_util::fam::{FamStruct, FamStructWrapper};
+use vmm_sys_util::generate_fam_struct_impl;
 
 /// Maximum number of CPUID entries that can be returned by a call to KVM ioctls.
 ///
@@ -192,7 +192,7 @@ unsafe impl FamStruct for kvm_xsave2 {
 /// cannot happen in the [`FamStruct::len`] trait method. To work around this, we define a wrapper
 /// struct that caches the length of a previous `KVM_CHECK_EXTENSION(KVM_CAP_XSAVE2)` call,
 /// and implement [`FamStruct`] for this wrapper. Then in kvm-ioctls, we can expose a function
-/// that first queries `KVM_CAP_XSAVE2`, then invokes [`KVM_GET_XSAVE2`] to retrieves the
+/// that first queries `KVM_CAP_XSAVE2`, then invokes `KVM_GET_XSAVE2` to retrieves the
 /// `kvm_xsave` structure, and finally combine them into the [`kvm_xsave2`] helper structure to be
 /// managed as a `FamStruct`.
 pub type Xsave = FamStructWrapper<kvm_xsave2>;
